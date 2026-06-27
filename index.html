@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#111411" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="武道日课" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>武道日课</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css?v=7" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="date-line" id="currentDate">今日</p>
+          <h1>武道日课</h1>
+        </div>
+        <button class="icon-button" id="themeToggle" type="button" aria-label="切换明暗">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3a1 1 0 0 1 1 1v1.1a1 1 0 1 1-2 0V4a1 1 0 0 1 1-1Zm6.36 2.64a1 1 0 0 1 0 1.41l-.78.78a1 1 0 0 1-1.41-1.41l.78-.78a1 1 0 0 1 1.41 0ZM20 11a1 1 0 1 1 0 2h-1.1a1 1 0 1 1 0-2H20Zm-2.42 5.17.78.78a1 1 0 0 1-1.41 1.41l-.78-.78a1 1 0 1 1 1.41-1.41ZM13 18.9V20a1 1 0 1 1-2 0v-1.1a1 1 0 1 1 2 0Zm-6.17-2.73a1 1 0 0 1 0 1.41l-.78.78a1 1 0 1 1-1.41-1.41l.78-.78a1 1 0 0 1 1.41 0ZM6.1 11a1 1 0 1 1 0 2H5a1 1 0 1 1 0-2h1.1Zm-.05-5.36.78.78A1 1 0 0 1 5.42 7.83l-.78-.78a1 1 0 0 1 1.41-1.41ZM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z" />
+          </svg>
+        </button>
+      </header>
+
+      <main>
+        <section class="view active" id="view-log" aria-labelledby="logTitle">
+          <div class="hero-strip">
+            <div class="hero-mark" aria-hidden="true">
+              <span>武</span>
+            </div>
+            <div>
+              <p class="eyebrow">本次记录</p>
+              <h2 id="logTitle">练完就记</h2>
+            </div>
+          </div>
+
+          <form class="entry-form" id="entryForm">
+            <div class="preset-head">
+              <span>常用项目</span>
+              <button class="text-button" id="managePresetsButton" type="button">管理</button>
+            </div>
+            <div class="preset-row" id="presetRow" aria-label="常用项目"></div>
+
+            <label class="field">
+              <span>动作</span>
+              <input id="activityInput" name="activity" autocomplete="off" required value="掌俯卧撑" />
+            </label>
+
+            <div class="two-col">
+              <label class="field">
+                <span>日期</span>
+                <input id="dateInput" name="date" type="date" required />
+              </label>
+              <label class="field">
+                <span>时间</span>
+                <input id="timeInput" name="time" type="time" required />
+              </label>
+            </div>
+
+            <div class="two-col">
+              <label class="field">
+                <span>数量</span>
+                <input id="amountInput" name="amount" type="number" min="0" step="1" inputmode="numeric" placeholder="50" />
+              </label>
+              <label class="field">
+                <span>单位</span>
+                <input id="unitInput" name="unit" autocomplete="off" value="个" />
+              </label>
+            </div>
+
+            <label class="field">
+              <span>耗时（分钟）</span>
+              <input id="durationInput" name="duration" type="number" min="0" step="1" inputmode="numeric" placeholder="可不填" />
+            </label>
+
+            <label class="field">
+              <span>备注</span>
+              <textarea id="noteInput" name="note" rows="3" placeholder="比如：早课、状态不错、右肩稍紧"></textarea>
+            </label>
+
+            <button class="primary-action" type="submit">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H6a1 1 0 1 1 0-2h5V6a1 1 0 0 1 1-1Z" />
+              </svg>
+              记一条
+            </button>
+          </form>
+        </section>
+
+        <section class="view" id="view-today" aria-labelledby="todayTitle">
+          <div class="section-head">
+            <p class="eyebrow">今日</p>
+            <h2 id="todayTitle">进度</h2>
+          </div>
+          <div class="stat-grid">
+            <article class="stat-card">
+              <span>条目</span>
+              <strong id="todayCount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>数量</span>
+              <strong id="todayAmount">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>分钟</span>
+              <strong id="todayMinutes">0</strong>
+            </article>
+          </div>
+          <div class="goal-summary" id="todayGoalSummary"></div>
+          <div class="activity-breakdown" id="todayBreakdown"></div>
+          <div class="record-list" id="todayList"></div>
+        </section>
+
+        <section class="view" id="view-history" aria-labelledby="historyTitle">
+          <div class="section-head with-action">
+            <div>
+              <p class="eyebrow">全部</p>
+              <h2 id="historyTitle">记录</h2>
+            </div>
+            <button class="small-button" id="exportButton" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3a1 1 0 0 1 1 1v9.59l2.3-2.29a1 1 0 1 1 1.4 1.42l-4 3.98a1 1 0 0 1-1.4 0l-4-3.98A1 1 0 1 1 8.7 11.3l2.3 2.29V4a1 1 0 0 1 1-1ZM5 18a1 1 0 0 1 1 1h12a1 1 0 1 1 0 2H6a3 3 0 0 1-3-3 1 1 0 1 1 2 0Z" />
+              </svg>
+              导出
+            </button>
+          </div>
+          <label class="field search-field">
+            <span>搜索</span>
+            <input id="searchInput" autocomplete="off" placeholder="动作、备注、单位" />
+          </label>
+          <div class="record-list grouped" id="historyList"></div>
+        </section>
+
+        <section class="view" id="view-settings" aria-labelledby="settingsTitle">
+          <div class="section-head">
+            <p class="eyebrow">个人</p>
+            <h2 id="settingsTitle">设置</h2>
+          </div>
+          <div class="preset-manager" id="presetManager">
+            <div class="subsection-head">
+              <div>
+                <p class="eyebrow">常用</p>
+                <h3>项目库</h3>
+              </div>
+              <button class="small-button" id="resetPresetsButton" type="button">恢复默认</button>
+            </div>
+            <form class="preset-form" id="presetForm">
+              <label class="field">
+                <span>项目名</span>
+                <input id="presetNameInput" autocomplete="off" placeholder="比如：拳俯卧撑" required />
+              </label>
+              <div class="two-col">
+                <label class="field">
+                  <span>默认数量</span>
+                  <input id="presetAmountInput" type="number" min="0" step="1" inputmode="numeric" placeholder="可不填" />
+                </label>
+                <label class="field">
+                  <span>单位</span>
+                  <input id="presetUnitInput" autocomplete="off" placeholder="个、分钟、遍" />
+                </label>
+              </div>
+              <label class="field">
+                <span>默认耗时（分钟）</span>
+                <input id="presetDurationInput" type="number" min="0" step="1" inputmode="numeric" placeholder="可不填" />
+              </label>
+              <div class="goal-form-block">
+                <div>
+                  <p class="eyebrow">每日目标</p>
+                  <h3>今日进度按这里计算</h3>
+                </div>
+                <div class="two-col">
+                  <label class="field">
+                    <span>目标数量</span>
+                    <input id="presetGoalAmountInput" type="number" min="0" step="1" inputmode="numeric" placeholder="可不填" />
+                  </label>
+                  <label class="field">
+                    <span>目标分钟</span>
+                    <input id="presetGoalDurationInput" type="number" min="0" step="1" inputmode="numeric" placeholder="可不填" />
+                  </label>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button class="primary-action" id="savePresetButton" type="submit">保存项目</button>
+                <button class="small-button" id="cancelPresetEditButton" type="button" hidden>取消编辑</button>
+              </div>
+            </form>
+            <div class="preset-list" id="presetList"></div>
+          </div>
+
+          <div class="subsection-head data-head">
+            <div>
+              <p class="eyebrow">本机</p>
+              <h3>数据</h3>
+            </div>
+          </div>
+          <div class="settings-stack">
+            <button class="setting-row" id="importButton" type="button">
+              <span>导入 JSON</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a1 1 0 0 1-1-1v-9.59l-2.3 2.29a1 1 0 1 1-1.4-1.42l4-3.98a1 1 0 0 1 1.4 0l4 3.98a1 1 0 1 1-1.4 1.42L13 10.41V20a1 1 0 0 1-1 1ZM5 6a1 1 0 0 1-1-1 3 3 0 0 1 3-3h10a3 3 0 0 1 3 3 1 1 0 1 1-2 0 1 1 0 0 0-1-1H7a1 1 0 0 0-1 1 1 1 0 0 1-1 1Z" /></svg>
+            </button>
+            <input class="hidden-file" id="importFile" type="file" accept="application/json,.json" />
+            <button class="setting-row danger" id="clearButton" type="button">
+              <span>清空记录</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3a1 1 0 0 0-1 1v1H5a1 1 0 1 0 0 2h14a1 1 0 1 0 0-2h-3V4a1 1 0 0 0-1-1H9Zm1 2h4V5h-4Zm-3 4a1 1 0 0 1 1.99-.14L9.86 19h4.28l.87-10.14A1 1 0 1 1 17 9.14l-.93 10.86A2 2 0 0 1 14.08 22H9.92a2 2 0 0 1-1.99-2L7 9.14A1 1 0 0 1 7 9Z" /></svg>
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="主导航">
+        <button class="nav-item active" type="button" data-view="log">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm-7 4a1 1 0 0 1 1 1v3h3a1 1 0 1 1 0 2h-3v3a1 1 0 1 1-2 0v-3H8a1 1 0 1 1 0-2h3V8a1 1 0 0 1 1-1Z" /></svg>
+          <span>记录</span>
+        </button>
+        <button class="nav-item" type="button" data-view="today">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1Zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9ZM5 6a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1H5Z" /></svg>
+          <span>今日</span>
+        </button>
+        <button class="nav-item" type="button" data-view="history">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 1-8.66 5 1 1 0 1 1 1.73 1A8 8 0 1 0 12 4a7.95 7.95 0 0 0-5.65 2.35H9a1 1 0 0 1 0 2H4a1 1 0 0 1-1-1V2a1 1 0 1 1 2 0v2.67A9.97 9.97 0 0 1 12 2Zm1 5v4.59l2.7 2.7a1 1 0 1 1-1.4 1.42l-3-3A1 1 0 0 1 11 12V7a1 1 0 1 1 2 0Z" /></svg>
+          <span>历史</span>
+        </button>
+        <button class="nav-item" type="button" data-view="settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 4a2 2 0 1 1 4 0 2 2 0 0 1-4 0Zm2-10a2 2 0 0 1 1.93 1.48l.2.74c.33.11.64.24.95.4l.67-.39a2 2 0 0 1 2.73.73l1 1.73a2 2 0 0 1-.73 2.73l-.67.39a7.6 7.6 0 0 1 0 1.1l.67.39a2 2 0 0 1 .73 2.73l-1 1.73a2 2 0 0 1-2.73.73l-.67-.39c-.3.16-.62.29-.95.4l-.2.74A2 2 0 0 1 12 22h-2a2 2 0 0 1-1.93-1.48l-.2-.74a7.76 7.76 0 0 1-.95-.4l-.67.39a2 2 0 0 1-2.73-.73l-1-1.73a2 2 0 0 1 .73-2.73l.67-.39a7.6 7.6 0 0 1 0-1.1l-.67-.39a2 2 0 0 1-.73-2.73l1-1.73a2 2 0 0 1 2.73-.73l.67.39c.3-.16.62-.29.95-.4l.2-.74A2 2 0 0 1 10 2h2Z" /></svg>
+          <span>设置</span>
+        </button>
+      </nav>
+    </div>
+
+    <div class="confirm-backdrop" id="confirmDialog" hidden>
+      <div class="confirm-panel" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <h2 id="confirmTitle">确认</h2>
+        <p id="confirmMessage"></p>
+        <div class="confirm-actions">
+          <button class="small-button" id="confirmCancel" type="button">取消</button>
+          <button class="primary-action danger-action" id="confirmOk" type="button">确定</button>
+        </div>
+      </div>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js?v=7"></script>
+  </body>
+</html>
