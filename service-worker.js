@@ -1,4 +1,4 @@
-const CACHE_NAME = "wudao-practice-v7";
+const CACHE_NAME = "wudao-practice-v9";
 const ASSETS = [
   "./",
   "./index.html",

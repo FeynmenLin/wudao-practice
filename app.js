@@ -247,6 +247,51 @@ function progressPercent(done, target) {
   return Math.min(100, Math.round((done / target) * 100));
 }
 
+function totalsByActivity(records) {
+  return records.reduce((map, record) => {
+    const name = record.activity || "未命名";
+    const current = map.get(name) || { amount: 0, duration: 0, unit: record.unit || "" };
+    current.amount += Number(record.amount) || 0;
+    current.duration += Number(record.duration) || 0;
+    if (!current.unit && record.unit) current.unit = record.unit;
+    map.set(name, current);
+    return map;
+  }, new Map());
+}
+
+function goalPresets() {
+  return state.presets.filter((preset) => (
+    Number(preset.goalAmount) > 0 || Number(preset.goalDuration) > 0
+  ));
+}
+
+function goalProgress(records) {
+  const totals = totalsByActivity(records);
+  const goals = goalPresets();
+  const goalTotals = goals.reduce((total, preset) => {
+    const done = totals.get(preset.name) || { amount: 0, duration: 0, unit: preset.unit || "" };
+    return {
+      done: total.done + Math.min(done.amount, preset.goalAmount || 0) + Math.min(done.duration, preset.goalDuration || 0),
+      target: total.target + (preset.goalAmount || 0) + (preset.goalDuration || 0),
+    };
+  }, { done: 0, target: 0 });
+
+  const finished = goals.filter((preset) => {
+    const done = totals.get(preset.name) || { amount: 0, duration: 0 };
+    const amountOk = !preset.goalAmount || done.amount >= preset.goalAmount;
+    const durationOk = !preset.goalDuration || done.duration >= preset.goalDuration;
+    return amountOk && durationOk;
+  }).length;
+
+  return {
+    finished,
+    goals,
+    percent: progressPercent(goalTotals.done, goalTotals.target),
+    target: goalTotals.target,
+    totals,
+  };
+}
+
 function renderRecord(record) {
   const note = record.note ? `<div class="record-note">${escapeHtml(record.note)}</div>` : "";
   return `
@@ -286,37 +331,10 @@ function renderToday() {
   els.todayAmount.textContent = sumNumbers(records, "amount");
   els.todayMinutes.textContent = sumNumbers(records, "duration");
 
-  const totalsByActivity = records.reduce((map, record) => {
-    const name = record.activity || "未命名";
-    const current = map.get(name) || { amount: 0, duration: 0, unit: record.unit || "" };
-    current.amount += Number(record.amount) || 0;
-    current.duration += Number(record.duration) || 0;
-    if (!current.unit && record.unit) current.unit = record.unit;
-    map.set(name, current);
-    return map;
-  }, new Map());
+  const dayProgress = goalProgress(records);
+  const { goals, percent: overallPercent, finished: finishedGoals, totals } = dayProgress;
 
-  const goalPresets = state.presets.filter((preset) => (
-    Number(preset.goalAmount) > 0 || Number(preset.goalDuration) > 0
-  ));
-
-  const goalTotals = goalPresets.reduce((total, preset) => {
-    const done = totalsByActivity.get(preset.name) || { amount: 0, duration: 0, unit: preset.unit || "" };
-    return {
-      done: total.done + Math.min(done.amount, preset.goalAmount || 0) + Math.min(done.duration, preset.goalDuration || 0),
-      target: total.target + (preset.goalAmount || 0) + (preset.goalDuration || 0),
-    };
-  }, { done: 0, target: 0 });
-
-  const overallPercent = progressPercent(goalTotals.done, goalTotals.target);
-  const finishedGoals = goalPresets.filter((preset) => {
-    const done = totalsByActivity.get(preset.name) || { amount: 0, duration: 0 };
-    const amountOk = !preset.goalAmount || done.amount >= preset.goalAmount;
-    const durationOk = !preset.goalDuration || done.duration >= preset.goalDuration;
-    return amountOk && durationOk;
-  }).length;
-
-  els.todayGoalSummary.innerHTML = goalPresets.length
+  els.todayGoalSummary.innerHTML = goals.length
     ? `
       <section class="goal-hero">
         <div class="goal-hero-head">
@@ -324,7 +342,7 @@ function renderToday() {
             <span>今日目标</span>
             <strong>${overallPercent}%</strong>
           </div>
-          <span>${finishedGoals}/${goalPresets.length} 项完成</span>
+          <span>${finishedGoals}/${goals.length} 项完成</span>
         </div>
         <div class="bar-track"><div class="bar-fill" style="width: ${Math.max(4, overallPercent)}%"></div></div>
         <p>${overallPercent >= 100 ? "今日目标已完成" : "继续积累，进度会随记录自动更新"}</p>
@@ -332,8 +350,8 @@ function renderToday() {
     `
     : `<div class="empty-state">还没有设置今日目标</div>`;
 
-  const goalRows = goalPresets.map((preset) => {
-    const done = totalsByActivity.get(preset.name) || { amount: 0, duration: 0, unit: preset.unit || "" };
+  const goalRows = goals.map((preset) => {
+    const done = totals.get(preset.name) || { amount: 0, duration: 0, unit: preset.unit || "" };
     const lines = [];
 
     if (preset.goalAmount) {
@@ -382,8 +400,8 @@ function renderToday() {
     `;
   });
 
-  const freeRows = [...totalsByActivity.entries()]
-    .filter(([activity]) => !goalPresets.some((preset) => preset.name === activity))
+  const freeRows = [...totals.entries()]
+    .filter(([activity]) => !goals.some((preset) => preset.name === activity))
     .map(([activity, item]) => {
       const measure = [
         item.amount ? `${item.amount}${item.unit}` : "",
@@ -420,13 +438,43 @@ function renderHistory() {
   }, new Map());
 
   els.historyList.innerHTML = [...groups.entries()]
-    .map(([date, records]) => `
-      <section class="date-group">
-        <div class="date-heading">${escapeHtml(formatDate(date))}</div>
-        ${records.map(renderRecord).join("")}
-      </section>
-    `)
+    .map(([date, records]) => renderHistoryDay(date, records))
     .join("");
+}
+
+function renderHistoryDay(date, records) {
+  const dayRecords = sortRecords(state.records.filter((record) => record.date === date));
+  const progress = goalProgress(dayRecords);
+  const totalAmount = sumNumbers(dayRecords, "amount");
+  const totalMinutes = sumNumbers(dayRecords, "duration");
+  const hasGoals = progress.goals.length > 0;
+  const percent = hasGoals ? progress.percent : 0;
+  const goalLabel = hasGoals ? `${progress.finished}/${progress.goals.length} 项完成` : "未设目标";
+  const amountLabel = [
+    totalAmount ? `数量 ${totalAmount}` : "",
+    totalMinutes ? `分钟 ${totalMinutes}` : "",
+  ].filter(Boolean).join(" · ") || "已记录";
+  const detailId = `history-${date}`;
+  const expanded = Boolean(state.search);
+
+  return `
+    <section class="history-day ${expanded ? "open" : ""}">
+      <button class="history-day-toggle" type="button" data-history-toggle="${escapeHtml(detailId)}" aria-expanded="${expanded}" aria-controls="${escapeHtml(detailId)}">
+        <div class="history-day-main">
+          <div>
+            <span>${escapeHtml(formatDate(date))}</span>
+            <strong>${hasGoals ? `${percent}%` : "日课"}</strong>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width: ${hasGoals ? Math.max(4, percent) : 100}%"></div></div>
+          <small>${escapeHtml(goalLabel)} · ${dayRecords.length} 条 · ${escapeHtml(amountLabel)}</small>
+        </div>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.3 9.3a1 1 0 0 1 1.4 0l3.3 3.29 3.3-3.3a1 1 0 1 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.42Z" /></svg>
+      </button>
+      <div class="history-day-detail" id="${escapeHtml(detailId)}" ${expanded ? "" : "hidden"}>
+        ${records.map(renderRecord).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function renderPresets() {
@@ -603,6 +651,21 @@ function handleRecordAction(event) {
   if (!card) return;
   if (button.dataset.action === "edit") editRecord(card.dataset.id);
   if (button.dataset.action === "delete") deleteRecord(card.dataset.id);
+}
+
+function handleHistoryClick(event) {
+  const toggle = event.target.closest("[data-history-toggle]");
+  if (toggle) {
+    const detail = document.getElementById(toggle.dataset.historyToggle);
+    if (!detail) return;
+    const nextExpanded = detail.hidden;
+    detail.hidden = !nextExpanded;
+    toggle.setAttribute("aria-expanded", String(nextExpanded));
+    toggle.closest(".history-day")?.classList.toggle("open", nextExpanded);
+    return;
+  }
+
+  handleRecordAction(event);
 }
 
 function exportRecords() {
@@ -784,7 +847,7 @@ function bindEvents() {
     item.addEventListener("click", () => switchView(item.dataset.view));
   });
   els.todayList.addEventListener("click", handleRecordAction);
-  els.historyList.addEventListener("click", handleRecordAction);
+  els.historyList.addEventListener("click", handleHistoryClick);
   els.searchInput.addEventListener("input", () => {
     state.search = els.searchInput.value.trim();
     renderHistory();
