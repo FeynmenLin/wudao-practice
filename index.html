@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>武道日课</title>
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=9" />
+    <link rel="stylesheet" href="./styles.css?v=10" />
   </head>
   <body>
     <div class="app-shell">
@@ -26,7 +26,7 @@
       </header>
 
       <main>
-        <section class="view active" id="view-log" aria-labelledby="logTitle">
+        <section class="view" id="view-log" aria-labelledby="logTitle">
           <div class="hero-strip">
             <div class="hero-mark" aria-hidden="true">
               <span>武</span>
@@ -90,7 +90,7 @@
           </form>
         </section>
 
-        <section class="view" id="view-today" aria-labelledby="todayTitle">
+        <section class="view active" id="view-today" aria-labelledby="todayTitle">
           <div class="section-head">
             <p class="eyebrow">今日</p>
             <h2 id="todayTitle">进度</h2>
@@ -211,13 +211,13 @@
       </main>
 
       <nav class="bottom-nav" aria-label="主导航">
-        <button class="nav-item active" type="button" data-view="log">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm-7 4a1 1 0 0 1 1 1v3h3a1 1 0 1 1 0 2h-3v3a1 1 0 1 1-2 0v-3H8a1 1 0 1 1 0-2h3V8a1 1 0 0 1 1-1Z" /></svg>
-          <span>记录</span>
-        </button>
-        <button class="nav-item" type="button" data-view="today">
+        <button class="nav-item active" type="button" data-view="today">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1Zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9ZM5 6a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1H5Z" /></svg>
           <span>今日</span>
+        </button>
+        <button class="nav-item" type="button" data-view="log">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm-7 4a1 1 0 0 1 1 1v3h3a1 1 0 1 1 0 2h-3v3a1 1 0 1 1-2 0v-3H8a1 1 0 1 1 0-2h3V8a1 1 0 0 1 1-1Z" /></svg>
+          <span>记录</span>
         </button>
         <button class="nav-item" type="button" data-view="history">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 1-8.66 5 1 1 0 1 1 1.73 1A8 8 0 1 0 12 4a7.95 7.95 0 0 0-5.65 2.35H9a1 1 0 0 1 0 2H4a1 1 0 0 1-1-1V2a1 1 0 1 1 2 0v2.67A9.97 9.97 0 0 1 12 2Zm1 5v4.59l2.7 2.7a1 1 0 1 1-1.4 1.42l-3-3A1 1 0 0 1 11 12V7a1 1 0 1 1 2 0Z" /></svg>
@@ -241,6 +241,6 @@
       </div>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=9"></script>
+    <script src="./app.js?v=10"></script>
   </body>
 </html>
