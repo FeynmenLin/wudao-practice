@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>武道日课</title>
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=12" />
+    <link rel="stylesheet" href="./styles.css?v=13" />
   </head>
   <body>
     <div class="app-shell">
@@ -87,6 +87,7 @@
               </svg>
               记一条
             </button>
+            <button class="small-button" id="cancelEntryEditButton" type="button" hidden>取消编辑</button>
           </form>
         </section>
 
@@ -95,6 +96,7 @@
             <p class="eyebrow">今日</p>
             <h2 id="todayTitle">进度</h2>
           </div>
+          <div class="streak-banner" id="streakBanner" hidden></div>
           <div class="stat-grid">
             <article class="stat-card">
               <span>条目</span>
@@ -127,6 +129,7 @@
               导出
             </button>
           </div>
+          <div class="history-stats" id="historyStats"></div>
           <label class="field search-field">
             <span>搜索</span>
             <input id="searchInput" autocomplete="off" placeholder="动作、备注、单位" />
@@ -241,6 +244,6 @@
       </div>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=12"></script>
+    <script src="./app.js?v=13"></script>
   </body>
 </html>

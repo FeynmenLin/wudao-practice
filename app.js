@@ -29,6 +29,7 @@ const els = {
   unitInput: document.querySelector("#unitInput"),
   durationInput: document.querySelector("#durationInput"),
   noteInput: document.querySelector("#noteInput"),
+  cancelEntryEditButton: document.querySelector("#cancelEntryEditButton"),
   managePresetsButton: document.querySelector("#managePresetsButton"),
   presetRow: document.querySelector("#presetRow"),
   presetManager: document.querySelector("#presetManager"),
@@ -45,6 +46,8 @@ const els = {
   resetPresetsButton: document.querySelector("#resetPresetsButton"),
   navItems: document.querySelectorAll(".nav-item"),
   views: document.querySelectorAll(".view"),
+  streakBanner: document.querySelector("#streakBanner"),
+  historyStats: document.querySelector("#historyStats"),
   todayCount: document.querySelector("#todayCount"),
   todayAmount: document.querySelector("#todayAmount"),
   todayMinutes: document.querySelector("#todayMinutes"),
@@ -78,6 +81,10 @@ function timeKey(date = new Date()) {
 }
 
 function formatDate(dateString) {
+  if (dateString === todayKey()) return "今天";
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (dateString === todayKey(yesterday)) return "昨天";
   const date = new Date(`${dateString}T00:00:00`);
   return new Intl.DateTimeFormat("zh-CN", {
     month: "long",
@@ -95,13 +102,38 @@ function formatFullDate(date = new Date()) {
   }).format(date);
 }
 
-function showToast(message) {
-  els.toast.textContent = message;
+function showToast(message, action) {
+  els.toast.innerHTML = "";
+  const text = document.createElement("span");
+  text.className = "toast-text";
+  text.textContent = message;
+  els.toast.appendChild(text);
+
+  let duration = 1800;
+  if (action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "toast-action";
+    button.textContent = action.text;
+    button.addEventListener("click", () => {
+      window.clearTimeout(showToast.timer);
+      els.toast.classList.remove("show");
+      els.toast.style.pointerEvents = "none";
+      action.handler();
+    });
+    els.toast.appendChild(button);
+    els.toast.style.pointerEvents = "auto";
+    duration = 5000;
+  } else {
+    els.toast.style.pointerEvents = "none";
+  }
+
   els.toast.classList.add("show");
   window.clearTimeout(showToast.timer);
   showToast.timer = window.setTimeout(() => {
     els.toast.classList.remove("show");
-  }, 1800);
+    els.toast.style.pointerEvents = "none";
+  }, duration);
 }
 
 function askConfirm({ title, message, okText = "确定" }) {
@@ -424,11 +456,44 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function computeStreak() {
+  const days = new Set(state.records.map((record) => record.date));
+  if (!days.size) return 0;
+  let streak = 0;
+  const cursor = new Date();
+  if (!days.has(todayKey(cursor))) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  while (days.has(todayKey(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+function renderStreak(practicedToday) {
+  const streak = computeStreak();
+  if (streak <= 0) {
+    els.streakBanner.hidden = true;
+    els.streakBanner.innerHTML = "";
+    return;
+  }
+  els.streakBanner.hidden = false;
+  els.streakBanner.innerHTML = `
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.6-2.9 1.4-3.9C9.1 9 10 10 10 11c.8-1 1-2.9-.1-4.7C11 5 12 3.6 12 2Z" /></svg>
+    <div>
+      <strong>连续打卡 ${streak} 天</strong>
+      <span>${practicedToday ? "今天已记录，继续保持" : "今天还没记录，别让连击断了"}</span>
+    </div>
+  `;
+}
+
 function renderToday() {
   const records = getTodayRecords();
   els.todayCount.textContent = records.length;
   els.todayAmount.textContent = sumNumbers(records, "amount");
   els.todayMinutes.textContent = sumNumbers(records, "duration");
+  renderStreak(records.length > 0);
 
   const dayProgress = goalProgress(records, todayKey());
   const { goals, percent: overallPercent, finished: finishedGoals, totals } = dayProgress;
@@ -472,6 +537,72 @@ function renderToday() {
   els.todayList.innerHTML = records.length
     ? records.map(renderRecord).join("")
     : `<div class="empty-state">今天还没有记录</div>`;
+}
+
+function renderStats() {
+  if (!state.records.length) {
+    els.historyStats.hidden = true;
+    els.historyStats.innerHTML = "";
+    return;
+  }
+
+  const now = new Date();
+  const todayK = todayKey(now);
+  const weekStart = new Date(now);
+  const mondayOffset = (weekStart.getDay() + 6) % 7;
+  weekStart.setDate(weekStart.getDate() - mondayOffset);
+  const weekStartK = todayKey(weekStart);
+  const monthStartK = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+
+  const inRange = (record, fromK) => record.date >= fromK && record.date <= todayK;
+  const weekRecords = state.records.filter((record) => inRange(record, weekStartK));
+  const monthRecords = state.records.filter((record) => inRange(record, monthStartK));
+
+  const summary = (label, records) => `
+    <div class="stat-mini">
+      <span class="eyebrow">${label}</span>
+      <strong>${records.length} 条</strong>
+      <small>数量 ${sumNumbers(records, "amount")} · 分钟 ${sumNumbers(records, "duration")}</small>
+    </div>
+  `;
+
+  const columns = [];
+  let maxCount = 0;
+  for (let i = 6; i >= 0; i -= 1) {
+    const day = new Date(now);
+    day.setDate(day.getDate() - i);
+    const key = todayKey(day);
+    const count = state.records.filter((record) => record.date === key).length;
+    if (count > maxCount) maxCount = count;
+    columns.push({ day, key, count });
+  }
+
+  const trendBars = columns
+    .map(({ day, key, count }) => {
+      const height = maxCount ? Math.round((count / maxCount) * 100) : 0;
+      const weekday = new Intl.DateTimeFormat("zh-CN", { weekday: "narrow" }).format(day);
+      const isToday = key === todayK;
+      return `
+        <div class="trend-col ${isToday ? "today" : ""}">
+          <span class="trend-count">${count || ""}</span>
+          <div class="trend-bar-wrap"><div class="trend-bar" style="height: ${count ? Math.max(8, height) : 3}%"></div></div>
+          <span class="trend-day">${escapeHtml(weekday)}</span>
+        </div>
+      `;
+    })
+    .join("");
+
+  els.historyStats.hidden = false;
+  els.historyStats.innerHTML = `
+    <div class="stats-summary">
+      ${summary("本周", weekRecords)}
+      ${summary("本月", monthRecords)}
+    </div>
+    <div class="trend">
+      <span class="eyebrow">近 7 天记录条数</span>
+      <div class="trend-chart">${trendBars}</div>
+    </div>
+  `;
 }
 
 function renderHistory() {
@@ -587,10 +718,12 @@ function renderPresets() {
 function renderAll() {
   renderPresets();
   renderToday();
+  renderStats();
   renderHistory();
 }
 
 function switchView(viewName) {
+  if (viewName !== "log") cancelEntryEdit();
   els.views.forEach((view) => {
     view.classList.toggle("active", view.id === `view-${viewName}`);
   });
@@ -613,7 +746,20 @@ function resetFormAfterSave() {
   els.durationInput.value = duration;
   setInitialDateTime();
   updatePresetSelection(els.activityInput.value.trim());
+  els.cancelEntryEditButton.hidden = true;
   els.entryForm.querySelector(".primary-action").lastChild.textContent = " 记一条";
+}
+
+function cancelEntryEdit() {
+  if (!state.editingId) return;
+  state.editingId = null;
+  els.entryForm.reset();
+  setInitialDateTime();
+  if (state.presets[0]) applyPreset(state.presets[0].id);
+  else updatePresetSelection("");
+  els.cancelEntryEditButton.hidden = true;
+  els.entryForm.querySelector(".primary-action").lastChild.textContent = " 记一条";
+  showToast("已取消编辑");
 }
 
 function updatePresetSelection(activity) {
@@ -686,6 +832,7 @@ function editRecord(id) {
   els.durationInput.value = record.duration || "";
   els.noteInput.value = record.note || "";
   els.entryForm.querySelector(".primary-action").lastChild.textContent = " 保存修改";
+  els.cancelEntryEditButton.hidden = false;
   updatePresetSelection(record.activity);
   switchView("log");
 }
@@ -699,10 +846,20 @@ async function deleteRecord(id) {
     okText: "删除",
   });
   if (!ok) return;
+  const removed = record;
   state.records = state.records.filter((item) => item.id !== id);
   saveRecords();
   renderAll();
-  showToast("已删除");
+  showToast("已删除", {
+    text: "撤销",
+    handler: () => {
+      if (state.records.some((item) => item.id === removed.id)) return;
+      state.records.push(removed);
+      saveRecords();
+      renderAll();
+      showToast("已恢复");
+    },
+  });
 }
 
 function handleRecordAction(event) {
@@ -893,6 +1050,7 @@ function handlePresetAction(event) {
 
 function bindEvents() {
   els.entryForm.addEventListener("submit", saveEntry);
+  els.cancelEntryEditButton.addEventListener("click", cancelEntryEdit);
   els.presetRow.addEventListener("click", (event) => {
     const button = event.target.closest(".preset");
     if (!button) return;
