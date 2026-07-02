@@ -1,4 +1,4 @@
-const APP_VERSION = "v15";
+const APP_VERSION = "v16";
 const STORAGE_KEY = "wudao-practice-records";
 const PRESETS_KEY = "wudao-practice-presets";
 const THEME_KEY = "wudao-theme";
@@ -68,6 +68,7 @@ const els = {
   confirmOk: document.querySelector("#confirmOk"),
   toast: document.querySelector("#toast"),
   appVersion: document.querySelector("#appVersion"),
+  checkUpdateButton: document.querySelector("#checkUpdateButton"),
 };
 
 function pad(value) {
@@ -1129,6 +1130,7 @@ function bindEvents() {
     renderAll();
     showToast("已清空");
   });
+  els.checkUpdateButton.addEventListener("click", forceUpdate);
   els.themeToggle.addEventListener("click", () => {
     const current = document.documentElement.dataset.theme || "light";
     applyTheme(current === "light" ? "dark" : "light", true);
@@ -1142,11 +1144,45 @@ function bindEvents() {
 
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+
   try {
-    await navigator.serviceWorker.register("./service-worker.js");
+    const registration = await navigator.serviceWorker.register("./service-worker.js");
+    registration.update();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") registration.update();
+    });
   } catch {
     // The app still works without offline caching.
   }
+}
+
+async function forceUpdate() {
+  showToast("正在检查更新…");
+  try {
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        await registration.update();
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+      }
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    }
+  } catch {
+    // Reload anyway; a fresh network fetch will pull the latest version.
+  }
+  window.setTimeout(() => window.location.reload(), 400);
 }
 
 function init() {
