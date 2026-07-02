@@ -341,6 +341,56 @@ function goalProgress(records, dateKey = todayKey()) {
   };
 }
 
+function renderGoalCard(preset, totals) {
+  const done = totals.get(preset.name) || { amount: 0, duration: 0, unit: preset.unit || "" };
+  const lines = [];
+
+  if (preset.goalAmount) {
+    const percent = progressPercent(done.amount, preset.goalAmount);
+    const remaining = Math.max(0, preset.goalAmount - done.amount);
+    lines.push(`
+      <div class="goal-line">
+        <span>数量</span>
+        <strong>${done.amount}/${preset.goalAmount}${escapeHtml(preset.unit || "")}</strong>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width: ${Math.max(4, percent)}%"></div></div>
+      <div class="goal-line">
+        <span>${remaining ? `还差 ${remaining}${escapeHtml(preset.unit || "")}` : "已达成"}</span>
+        <span>${percent}%</span>
+      </div>
+    `);
+  }
+
+  if (preset.goalDuration) {
+    const percent = progressPercent(done.duration, preset.goalDuration);
+    const remaining = Math.max(0, preset.goalDuration - done.duration);
+    lines.push(`
+      <div class="goal-line">
+        <span>时间</span>
+        <strong>${done.duration}/${preset.goalDuration}分钟</strong>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width: ${Math.max(4, percent)}%"></div></div>
+      <div class="goal-line">
+        <span>${remaining ? `还差 ${remaining}分钟` : "已达成"}</span>
+        <span>${percent}%</span>
+      </div>
+    `);
+  }
+
+  const isDone = (!preset.goalAmount || done.amount >= preset.goalAmount)
+    && (!preset.goalDuration || done.duration >= preset.goalDuration);
+
+  return `
+    <article class="goal-card ${isDone ? "done" : ""}">
+      <div class="goal-card-head">
+        <strong>${escapeHtml(preset.name)}</strong>
+        <span class="goal-badge">${isDone ? "完成" : "进行中"}</span>
+      </div>
+      ${lines.join("")}
+    </article>
+  `;
+}
+
 function renderRecord(record) {
   const note = record.note ? `<div class="record-note">${escapeHtml(record.note)}</div>` : "";
   return `
@@ -399,55 +449,7 @@ function renderToday() {
     `
     : `<div class="empty-state">还没有设置今日目标</div>`;
 
-  const goalRows = goals.map((preset) => {
-    const done = totals.get(preset.name) || { amount: 0, duration: 0, unit: preset.unit || "" };
-    const lines = [];
-
-    if (preset.goalAmount) {
-      const percent = progressPercent(done.amount, preset.goalAmount);
-      const remaining = Math.max(0, preset.goalAmount - done.amount);
-      lines.push(`
-        <div class="goal-line">
-          <span>数量</span>
-          <strong>${done.amount}/${preset.goalAmount}${escapeHtml(preset.unit || "")}</strong>
-        </div>
-        <div class="bar-track"><div class="bar-fill" style="width: ${Math.max(4, percent)}%"></div></div>
-        <div class="goal-line">
-          <span>${remaining ? `还差 ${remaining}${escapeHtml(preset.unit || "")}` : "已达成"}</span>
-          <span>${percent}%</span>
-        </div>
-      `);
-    }
-
-    if (preset.goalDuration) {
-      const percent = progressPercent(done.duration, preset.goalDuration);
-      const remaining = Math.max(0, preset.goalDuration - done.duration);
-      lines.push(`
-        <div class="goal-line">
-          <span>时间</span>
-          <strong>${done.duration}/${preset.goalDuration}分钟</strong>
-        </div>
-        <div class="bar-track"><div class="bar-fill" style="width: ${Math.max(4, percent)}%"></div></div>
-        <div class="goal-line">
-          <span>${remaining ? `还差 ${remaining}分钟` : "已达成"}</span>
-          <span>${percent}%</span>
-        </div>
-      `);
-    }
-
-    const isDone = (!preset.goalAmount || done.amount >= preset.goalAmount)
-      && (!preset.goalDuration || done.duration >= preset.goalDuration);
-
-    return `
-      <article class="goal-card ${isDone ? "done" : ""}">
-        <div class="goal-card-head">
-          <strong>${escapeHtml(preset.name)}</strong>
-          <span class="goal-badge">${isDone ? "完成" : "进行中"}</span>
-        </div>
-        ${lines.join("")}
-      </article>
-    `;
-  });
+  const goalRows = goals.map((preset) => renderGoalCard(preset, totals));
 
   const freeRows = [...totals.entries()]
     .filter(([activity]) => !goals.some((preset) => preset.name === activity))
@@ -505,6 +507,15 @@ function renderHistoryDay(date, records) {
   ].filter(Boolean).join(" · ") || "已记录";
   const detailId = `history-${date}`;
   const expanded = Boolean(state.search);
+  const goalCards = hasGoals
+    ? progress.goals.map((preset) => renderGoalCard(preset, progress.totals)).join("")
+    : "";
+  const goalsBlock = `
+    <div class="history-day-goals">
+      <p class="eyebrow">当天目标</p>
+      ${goalCards || `<div class="empty-state">这天没有设定目标</div>`}
+    </div>
+  `;
 
   return `
     <section class="history-day ${expanded ? "open" : ""}">
@@ -520,6 +531,7 @@ function renderHistoryDay(date, records) {
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.3 9.3a1 1 0 0 1 1.4 0l3.3 3.29 3.3-3.3a1 1 0 1 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.42Z" /></svg>
       </button>
       <div class="history-day-detail" id="${escapeHtml(detailId)}" ${expanded ? "" : "hidden"}>
+        ${goalsBlock}
         ${records.map(renderRecord).join("")}
       </div>
     </section>
