@@ -1,3 +1,4 @@
+const APP_VERSION = "v15";
 const STORAGE_KEY = "wudao-practice-records";
 const PRESETS_KEY = "wudao-practice-presets";
 const THEME_KEY = "wudao-theme";
@@ -66,6 +67,7 @@ const els = {
   confirmCancel: document.querySelector("#confirmCancel"),
   confirmOk: document.querySelector("#confirmOk"),
   toast: document.querySelector("#toast"),
+  appVersion: document.querySelector("#appVersion"),
 };
 
 function pad(value) {
@@ -1149,6 +1151,7 @@ async function registerServiceWorker() {
 
 function init() {
   applyTheme();
+  if (els.appVersion) els.appVersion.textContent = APP_VERSION;
   setInitialDateTime();
   loadRecords();
   loadPresets();

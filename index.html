@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>武道日课</title>
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=14" />
+    <link rel="stylesheet" href="./styles.css?v=15" />
   </head>
   <body>
     <div class="app-shell">
@@ -92,12 +92,9 @@
         </section>
 
         <section class="view active" id="view-today" aria-labelledby="todayTitle">
-          <div class="section-head today-head">
-            <div class="seal" aria-hidden="true"><span>武</span></div>
-            <div>
-              <p class="eyebrow">今日</p>
-              <h2 id="todayTitle">进度</h2>
-            </div>
+          <div class="section-head">
+            <p class="eyebrow">今日</p>
+            <h2 id="todayTitle">进度</h2>
           </div>
           <div class="streak-banner" id="streakBanner" hidden></div>
           <div class="stat-grid">
@@ -213,6 +210,17 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3a1 1 0 0 0-1 1v1H5a1 1 0 1 0 0 2h14a1 1 0 1 0 0-2h-3V4a1 1 0 0 0-1-1H9Zm1 2h4V5h-4Zm-3 4a1 1 0 0 1 1.99-.14L9.86 19h4.28l.87-10.14A1 1 0 1 1 17 9.14l-.93 10.86A2 2 0 0 1 14.08 22H9.92a2 2 0 0 1-1.99-2L7 9.14A1 1 0 0 1 7 9Z" /></svg>
             </button>
           </div>
+
+          <div class="subsection-head data-head">
+            <div>
+              <p class="eyebrow">关于</p>
+              <h3>版本</h3>
+            </div>
+          </div>
+          <div class="about-card">
+            <span>武道日课</span>
+            <strong id="appVersion">—</strong>
+          </div>
         </section>
       </main>
 
@@ -247,6 +255,6 @@
       </div>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=14"></script>
+    <script src="./app.js?v=15"></script>
   </body>
 </html>

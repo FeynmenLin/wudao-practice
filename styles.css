@@ -403,29 +403,22 @@ h3 {
   transition: transform 150ms var(--ease), background-color 180ms var(--ease), border-color 180ms var(--ease);
 }
 
-.today-head {
+.about-card {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
+  padding: 14px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
 }
 
-.seal {
-  display: grid;
-  flex: none;
-  width: 46px;
-  height: 46px;
-  place-items: center;
-  color: var(--accent-ink);
-  background:
-    linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000));
-  border-radius: 10px;
-  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.35), var(--shadow-soft);
-}
-
-.seal span {
-  font-family: var(--font-serif);
-  font-size: 26px;
-  line-height: 1;
+.about-card strong {
+  color: var(--ink);
+  font-size: 16px;
 }
 
 .stat-card,
