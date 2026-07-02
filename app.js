@@ -158,15 +158,61 @@ function saveRecords() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
 }
 
+function normalizeGoalHistory(rawHistory, rawGoalAmount, rawGoalDuration) {
+  if (Array.isArray(rawHistory) && rawHistory.length) {
+    return rawHistory
+      .map((entry) => ({
+        effectiveFrom: String(entry.effectiveFrom || "1970-01-01"),
+        goalAmount: Number(entry.goalAmount) || 0,
+        goalDuration: Number(entry.goalDuration) || 0,
+      }))
+      .filter((entry) => /^\d{4}-\d{2}-\d{2}$/.test(entry.effectiveFrom))
+      .sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
+  }
+  if (rawGoalAmount > 0 || rawGoalDuration > 0) {
+    return [{ effectiveFrom: "1970-01-01", goalAmount: rawGoalAmount, goalDuration: rawGoalDuration }];
+  }
+  return [];
+}
+
+function goalFromHistory(history, dateKey) {
+  let result = { goalAmount: 0, goalDuration: 0 };
+  for (const entry of history || []) {
+    if (entry.effectiveFrom <= dateKey) {
+      result = { goalAmount: entry.goalAmount, goalDuration: entry.goalDuration };
+    } else {
+      break;
+    }
+  }
+  return result;
+}
+
+function updateGoalHistory(history, goalAmount, goalDuration, dateKey) {
+  const sorted = [...(history || [])].sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
+  const current = goalFromHistory(sorted, dateKey);
+  if (current.goalAmount === goalAmount && current.goalDuration === goalDuration) {
+    return sorted;
+  }
+  const filtered = sorted.filter((entry) => entry.effectiveFrom !== dateKey);
+  filtered.push({ effectiveFrom: dateKey, goalAmount, goalDuration });
+  filtered.sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
+  return filtered;
+}
+
 function normalizePreset(item) {
+  const rawGoalAmount = Number(item.goalAmount) || 0;
+  const rawGoalDuration = Number(item.goalDuration) || 0;
+  const goalHistory = normalizeGoalHistory(item.goalHistory, rawGoalAmount, rawGoalDuration);
+  const latest = goalHistory[goalHistory.length - 1];
   return {
     id: item.id || crypto.randomUUID(),
     name: String(item.name || "").trim(),
     unit: String(item.unit || "").trim(),
     amount: Number(item.amount) || 0,
     duration: Number(item.duration) || 0,
-    goalAmount: Number(item.goalAmount) || 0,
-    goalDuration: Number(item.goalDuration) || 0,
+    goalAmount: latest ? latest.goalAmount : rawGoalAmount,
+    goalDuration: latest ? latest.goalDuration : rawGoalDuration,
+    goalHistory,
   };
 }
 
@@ -259,15 +305,18 @@ function totalsByActivity(records) {
   }, new Map());
 }
 
-function goalPresets() {
-  return state.presets.filter((preset) => (
-    Number(preset.goalAmount) > 0 || Number(preset.goalDuration) > 0
-  ));
+function goalPresetsForDate(dateKey) {
+  return state.presets
+    .map((preset) => {
+      const goal = goalFromHistory(preset.goalHistory, dateKey);
+      return { ...preset, goalAmount: goal.goalAmount, goalDuration: goal.goalDuration };
+    })
+    .filter((preset) => preset.goalAmount > 0 || preset.goalDuration > 0);
 }
 
-function goalProgress(records) {
+function goalProgress(records, dateKey = todayKey()) {
   const totals = totalsByActivity(records);
-  const goals = goalPresets();
+  const goals = goalPresetsForDate(dateKey);
   const goalTotals = goals.reduce((total, preset) => {
     const done = totals.get(preset.name) || { amount: 0, duration: 0, unit: preset.unit || "" };
     return {
@@ -331,7 +380,7 @@ function renderToday() {
   els.todayAmount.textContent = sumNumbers(records, "amount");
   els.todayMinutes.textContent = sumNumbers(records, "duration");
 
-  const dayProgress = goalProgress(records);
+  const dayProgress = goalProgress(records, todayKey());
   const { goals, percent: overallPercent, finished: finishedGoals, totals } = dayProgress;
 
   els.todayGoalSummary.innerHTML = goals.length
@@ -444,7 +493,7 @@ function renderHistory() {
 
 function renderHistoryDay(date, records) {
   const dayRecords = sortRecords(state.records.filter((record) => record.date === date));
-  const progress = goalProgress(dayRecords);
+  const progress = goalProgress(dayRecords, date);
   const totalAmount = sumNumbers(dayRecords, "amount");
   const totalMinutes = sumNumbers(dayRecords, "duration");
   const hasGoals = progress.goals.length > 0;
@@ -739,14 +788,29 @@ function resetPresetForm() {
 
 function savePreset(event) {
   event.preventDefault();
+  const newGoalAmount = Number(els.presetGoalAmountInput.value) || 0;
+  const newGoalDuration = Number(els.presetGoalDurationInput.value) || 0;
+  const today = todayKey();
+
+  let goalHistory;
+  if (state.editingPresetId) {
+    const existing = state.presets.find((item) => item.id === state.editingPresetId);
+    goalHistory = updateGoalHistory(existing?.goalHistory, newGoalAmount, newGoalDuration, today);
+  } else if (newGoalAmount > 0 || newGoalDuration > 0) {
+    goalHistory = [{ effectiveFrom: today, goalAmount: newGoalAmount, goalDuration: newGoalDuration }];
+  } else {
+    goalHistory = [];
+  }
+
   const preset = normalizePreset({
     id: state.editingPresetId || crypto.randomUUID(),
     name: els.presetNameInput.value,
     unit: els.presetUnitInput.value,
     amount: els.presetAmountInput.value,
     duration: els.presetDurationInput.value,
-    goalAmount: els.presetGoalAmountInput.value,
-    goalDuration: els.presetGoalDurationInput.value,
+    goalAmount: newGoalAmount,
+    goalDuration: newGoalDuration,
+    goalHistory,
   });
 
   if (!preset.name) {
