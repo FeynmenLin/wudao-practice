@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>武道日课</title>
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=13" />
+    <link rel="stylesheet" href="./styles.css?v=14" />
   </head>
   <body>
     <div class="app-shell">
@@ -92,9 +92,12 @@
         </section>
 
         <section class="view active" id="view-today" aria-labelledby="todayTitle">
-          <div class="section-head">
-            <p class="eyebrow">今日</p>
-            <h2 id="todayTitle">进度</h2>
+          <div class="section-head today-head">
+            <div class="seal" aria-hidden="true"><span>武</span></div>
+            <div>
+              <p class="eyebrow">今日</p>
+              <h2 id="todayTitle">进度</h2>
+            </div>
           </div>
           <div class="streak-banner" id="streakBanner" hidden></div>
           <div class="stat-grid">
@@ -244,6 +247,6 @@
       </div>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=13"></script>
+    <script src="./app.js?v=14"></script>
   </body>
 </html>

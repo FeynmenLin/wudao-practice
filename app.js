@@ -263,10 +263,20 @@ function savePresets() {
   localStorage.setItem(PRESETS_KEY, JSON.stringify(state.presets));
 }
 
-function applyTheme(theme) {
-  const nextTheme = theme || localStorage.getItem(THEME_KEY) || "light";
+function prefersDark() {
+  return Boolean(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+}
+
+function getPreferredTheme() {
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === "light" || stored === "dark") return stored;
+  return prefersDark() ? "dark" : "light";
+}
+
+function applyTheme(theme, persist = false) {
+  const nextTheme = theme || getPreferredTheme();
   document.documentElement.dataset.theme = nextTheme;
-  localStorage.setItem(THEME_KEY, nextTheme);
+  if (persist) localStorage.setItem(THEME_KEY, nextTheme);
 }
 
 function setInitialDateTime() {
@@ -447,6 +457,15 @@ function renderRecord(record) {
   `;
 }
 
+function emptyState(message) {
+  return `
+    <div class="empty-state">
+      <svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M31 8.5a20 20 0 1 0 9.5 14" /></svg>
+      <p>${escapeHtml(message)}</p>
+    </div>
+  `;
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -512,7 +531,7 @@ function renderToday() {
         <p>${overallPercent >= 100 ? "今日目标已完成" : "继续积累，进度会随记录自动更新"}</p>
       </section>
     `
-    : `<div class="empty-state">还没有设置今日目标</div>`;
+    : emptyState("还没有设置今日目标");
 
   const goalRows = goals.map((preset) => renderGoalCard(preset, totals));
 
@@ -536,7 +555,7 @@ function renderToday() {
 
   els.todayList.innerHTML = records.length
     ? records.map(renderRecord).join("")
-    : `<div class="empty-state">今天还没有记录</div>`;
+    : emptyState("今天还没有记录");
 }
 
 function renderStats() {
@@ -609,7 +628,7 @@ function renderHistory() {
   const filtered = sortRecords(state.records).filter((record) => recordMatches(record, state.search));
 
   if (!filtered.length) {
-    els.historyList.innerHTML = `<div class="empty-state">没有找到记录</div>`;
+    els.historyList.innerHTML = emptyState("没有找到记录");
     return;
   }
 
@@ -644,7 +663,7 @@ function renderHistoryDay(date, records) {
   const goalsBlock = `
     <div class="history-day-goals">
       <p class="eyebrow">当天目标</p>
-      ${goalCards || `<div class="empty-state">这天没有设定目标</div>`}
+      ${goalCards || emptyState("这天没有设定目标")}
     </div>
   `;
 
@@ -672,7 +691,7 @@ function renderHistoryDay(date, records) {
 function renderPresets() {
   if (!state.presets.length) {
     els.presetRow.innerHTML = `<div class="empty-preset">暂无常用项目</div>`;
-    els.presetList.innerHTML = `<div class="empty-state">还没有常用项目</div>`;
+    els.presetList.innerHTML = emptyState("还没有常用项目");
     return;
   }
 
@@ -1110,8 +1129,13 @@ function bindEvents() {
   });
   els.themeToggle.addEventListener("click", () => {
     const current = document.documentElement.dataset.theme || "light";
-    applyTheme(current === "light" ? "dark" : "light");
+    applyTheme(current === "light" ? "dark" : "light", true);
   });
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+      if (!localStorage.getItem(THEME_KEY)) applyTheme(event.matches ? "dark" : "light");
+    });
+  }
 }
 
 async function registerServiceWorker() {
