@@ -421,6 +421,13 @@ h3 {
   font-size: 16px;
 }
 
+.update-hint {
+  margin: 8px 2px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .stat-card,
 .goal-card,
 .stat-mini,

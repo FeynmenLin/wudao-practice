@@ -1,4 +1,4 @@
-const APP_VERSION = "v18";
+const APP_VERSION = "v19";
 const STORAGE_KEY = "wudao-practice-records";
 const PRESETS_KEY = "wudao-practice-presets";
 const THEME_KEY = "wudao-theme";
@@ -1207,25 +1207,21 @@ async function registerServiceWorker() {
 }
 
 async function forceUpdate() {
-  showToast("正在检查更新…");
+  showToast("正在强制刷新…");
   try {
     if ("caches" in window) {
       const keys = await caches.keys();
       await Promise.all(keys.map((key) => caches.delete(key)));
     }
     if ("serviceWorker" in navigator) {
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (registration?.active) {
-        registration.active.postMessage({ type: "CLEAR_CACHE" });
-      }
-      await registration?.update();
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
     }
   } catch {
-    // Reload anyway; a fresh network fetch will pull the latest version.
+    // Continue to hard reload even if cleanup fails.
   }
-  window.setTimeout(() => {
-    window.location.href = `./index.html?refresh=${Date.now()}`;
-  }, 300);
+  // 用 replace + 时间戳，彻底绕过页面和资源缓存
+  window.location.replace(`./?force=${Date.now()}`);
 }
 
 function init() {

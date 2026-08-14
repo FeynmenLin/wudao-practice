@@ -1,4 +1,4 @@
-const CACHE_NAME = "wudao-practice-v18";
+const CACHE_NAME = "wudao-practice-v19";
 const ASSETS = [
   "./",
   "./index.html",
@@ -33,9 +33,9 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
-  // 一律网络优先：有网就用最新，失败再回退缓存。避免旧资源卡死。
+  // cache: "no-store" 绕过浏览器 HTTP 缓存，避免 GitHub Pages 旧文件卡死
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: "no-store" })
       .then((response) => {
         if (response && response.status === 200 && response.type === "basic") {
           const copy = response.clone();
