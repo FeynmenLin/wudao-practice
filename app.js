@@ -1,4 +1,4 @@
-const APP_VERSION = "v16";
+const APP_VERSION = "v17";
 const STORAGE_KEY = "wudao-practice-records";
 const PRESETS_KEY = "wudao-practice-presets";
 const THEME_KEY = "wudao-theme";
@@ -1144,20 +1144,8 @@ function bindEvents() {
 
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (refreshing) return;
-    refreshing = true;
-    window.location.reload();
-  });
-
   try {
-    const registration = await navigator.serviceWorker.register("./service-worker.js");
-    registration.update();
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") registration.update();
-    });
+    await navigator.serviceWorker.register("./service-worker.js");
   } catch {
     // The app still works without offline caching.
   }
@@ -1166,23 +1154,23 @@ async function registerServiceWorker() {
 async function forceUpdate() {
   showToast("正在检查更新…");
   try {
-    if ("serviceWorker" in navigator) {
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (registration) {
-        await registration.update();
-        if (registration.waiting) {
-          registration.waiting.postMessage({ type: "SKIP_WAITING" });
-        }
-      }
-    }
     if ("caches" in window) {
       const keys = await caches.keys();
       await Promise.all(keys.map((key) => caches.delete(key)));
     }
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration?.active) {
+        registration.active.postMessage({ type: "CLEAR_CACHE" });
+      }
+      await registration?.update();
+    }
   } catch {
     // Reload anyway; a fresh network fetch will pull the latest version.
   }
-  window.setTimeout(() => window.location.reload(), 400);
+  window.setTimeout(() => {
+    window.location.href = `./index.html?refresh=${Date.now()}`;
+  }, 300);
 }
 
 function init() {
