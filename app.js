@@ -1,4 +1,4 @@
-const APP_VERSION = "v17";
+const APP_VERSION = "v18";
 const STORAGE_KEY = "wudao-practice-records";
 const PRESETS_KEY = "wudao-practice-presets";
 const THEME_KEY = "wudao-theme";
@@ -341,13 +341,29 @@ function progressPercent(done, target) {
 function totalsByActivity(records) {
   return records.reduce((map, record) => {
     const name = record.activity || "未命名";
-    const current = map.get(name) || { amount: 0, duration: 0, unit: record.unit || "" };
+    const current = map.get(name) || { amount: 0, duration: 0, unit: record.unit || "", count: 0 };
     current.amount += Number(record.amount) || 0;
     current.duration += Number(record.duration) || 0;
+    current.count += 1;
     if (!current.unit && record.unit) current.unit = record.unit;
     map.set(name, current);
     return map;
   }, new Map());
+}
+
+function formatLifetimeMeasure(item) {
+  const parts = [];
+  if (Number(item.amount) > 0) parts.push(`${item.amount}${item.unit || ""}`);
+  if (Number(item.duration) > 0) parts.push(`${item.duration}分钟`);
+  return parts.join(" · ") || "0";
+}
+
+function sortedLifetimeTotals(records = state.records) {
+  return [...totalsByActivity(records).entries()].sort((left, right) => {
+    const [, a] = left;
+    const [, b] = right;
+    return (b.amount - a.amount) || (b.duration - a.duration) || left[0].localeCompare(right[0], "zh-CN");
+  });
 }
 
 function goalPresetsForDate(dateKey) {
@@ -386,7 +402,7 @@ function goalProgress(records, dateKey = todayKey()) {
   };
 }
 
-function renderGoalCard(preset, totals) {
+function renderGoalCard(preset, totals, lifetimeTotals) {
   const done = totals.get(preset.name) || { amount: 0, duration: 0, unit: preset.unit || "" };
   const lines = [];
 
@@ -418,6 +434,16 @@ function renderGoalCard(preset, totals) {
       <div class="goal-line">
         <span>${remaining ? `还差 ${remaining}分钟` : "已达成"}</span>
         <span>${percent}%</span>
+      </div>
+    `);
+  }
+
+  const life = lifetimeTotals?.get(preset.name);
+  if (life && (life.amount > 0 || life.duration > 0)) {
+    lines.push(`
+      <div class="goal-line lifetime">
+        <span>累计</span>
+        <strong>${escapeHtml(formatLifetimeMeasure(life))}</strong>
       </div>
     `);
   }
@@ -519,6 +545,7 @@ function renderToday() {
 
   const dayProgress = goalProgress(records, todayKey());
   const { goals, percent: overallPercent, finished: finishedGoals, totals } = dayProgress;
+  const lifetimeTotals = totalsByActivity(state.records);
 
   els.todayGoalSummary.innerHTML = goals.length
     ? `
@@ -536,7 +563,7 @@ function renderToday() {
     `
     : emptyState("还没有设置今日目标");
 
-  const goalRows = goals.map((preset) => renderGoalCard(preset, totals));
+  const goalRows = goals.map((preset) => renderGoalCard(preset, totals, lifetimeTotals));
 
   const freeRows = [...totals.entries()]
     .filter(([activity]) => !goals.some((preset) => preset.name === activity))
@@ -545,11 +572,15 @@ function renderToday() {
         item.amount ? `${item.amount}${item.unit}` : "",
         item.duration ? `${item.duration}分钟` : "",
       ].filter(Boolean).join(" · ");
+      const life = lifetimeTotals.get(activity);
+      const lifeLabel = life && (life.amount > 0 || life.duration > 0)
+        ? `累计 ${formatLifetimeMeasure(life)}`
+        : "";
       return `
         <div class="breakdown-row">
           <strong>${escapeHtml(activity)}</strong>
           <div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div>
-          <span>${escapeHtml(measure || "1次")}</span>
+          <span>${escapeHtml(measure || "1次")}${lifeLabel ? ` · ${escapeHtml(lifeLabel)}` : ""}</span>
         </div>
       `;
     });
@@ -614,6 +645,16 @@ function renderStats() {
     })
     .join("");
 
+  const lifetimeRows = sortedLifetimeTotals()
+    .map(([name, item]) => `
+      <div class="lifetime-row">
+        <strong>${escapeHtml(name)}</strong>
+        <span>${escapeHtml(formatLifetimeMeasure(item))}</span>
+        <small>${item.count} 次</small>
+      </div>
+    `)
+    .join("");
+
   els.historyStats.hidden = false;
   els.historyStats.innerHTML = `
     <div class="stats-summary">
@@ -623,6 +664,10 @@ function renderStats() {
     <div class="trend">
       <span class="eyebrow">近 7 天记录条数</span>
       <div class="trend-chart">${trendBars}</div>
+    </div>
+    <div class="lifetime-totals">
+      <span class="eyebrow">各项目累计</span>
+      ${lifetimeRows}
     </div>
   `;
 }
@@ -661,7 +706,7 @@ function renderHistoryDay(date, records) {
   const detailId = `history-${date}`;
   const expanded = Boolean(state.search);
   const goalCards = hasGoals
-    ? progress.goals.map((preset) => renderGoalCard(preset, progress.totals)).join("")
+    ? progress.goals.map((preset) => renderGoalCard(preset, progress.totals, totalsByActivity(state.records))).join("")
     : "";
   const goalsBlock = `
     <div class="history-day-goals">
@@ -710,11 +755,21 @@ function renderPresets() {
     })
     .join("");
 
+  const lifetimeTotals = totalsByActivity(state.records);
+
   els.presetList.innerHTML = state.presets
     .map((preset) => {
       const defaultDetail = presetMeasure(preset) || (preset.unit ? `单位：${preset.unit}` : "无默认值");
       const goalDetail = presetGoalMeasure(preset);
-      const detail = goalDetail ? `${defaultDetail} · 目标 ${goalDetail}` : defaultDetail;
+      const life = lifetimeTotals.get(preset.name);
+      const lifeDetail = life && (life.amount > 0 || life.duration > 0)
+        ? `累计 ${formatLifetimeMeasure(life)}`
+        : "累计 0";
+      const detail = [
+        defaultDetail,
+        goalDetail ? `目标 ${goalDetail}` : "",
+        lifeDetail,
+      ].filter(Boolean).join(" · ");
       return `
         <article class="preset-card" data-preset-id="${escapeHtml(preset.id)}">
           <div>
